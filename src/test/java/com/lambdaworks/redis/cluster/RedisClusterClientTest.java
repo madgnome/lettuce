@@ -420,8 +420,7 @@ public class RedisClusterClientTest extends AbstractClusterTest {
             redisClusterNode.setSlots(new ArrayList<>());
         }
         RedisChannelHandler rch = (RedisChannelHandler) sync.getStatefulConnection();
-        ClusterDistributionChannelWriter<String, String> writer = (ClusterDistributionChannelWriter<String, String>) rch
-                .getChannelWriter();
+        ClusterDistributionChannelWriter writer = (ClusterDistributionChannelWriter) rch.getChannelWriter();
         writer.setPartitions(clusterClient.getPartitions());
         clusterClient.getPartitions().reload(clusterClient.getPartitions().getPartitions());
 
@@ -522,22 +521,6 @@ public class RedisClusterClientTest extends AbstractClusterTest {
     @Test(expected = IllegalArgumentException.class)
     public void testReadFromNull() throws Exception {
         sync.getStatefulConnection().setReadFrom(null);
-    }
-
-    @Test
-    public void testPfmerge() throws Exception {
-        RedisAdvancedClusterConnection<String, String> connection = clusterClient.connectCluster();
-
-        assertThat(SlotHash.getSlot("key2660")).isEqualTo(SlotHash.getSlot("key7112")).isEqualTo(SlotHash.getSlot("key8885"));
-
-        connection.pfadd("key2660", "rand", "mat");
-        connection.pfadd("key7112", "mat", "perrin");
-
-        connection.pfmerge("key8885", "key2660", "key7112");
-
-        assertThat(connection.pfcount("key8885")).isEqualTo(3);
-
-        connection.close();
     }
 
     private void assertTimeout(StatefulConnection<?, ?> connection, long expectedTimeout, TimeUnit expectedTimeUnit) {

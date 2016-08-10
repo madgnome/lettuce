@@ -123,7 +123,7 @@ public class ConnectionFailureTest extends AbstractRedisClientTest {
             ReconnectionListener reconnectionListener = new ReconnectionListener() {
                 @Override
                 public void onReconnect(ConnectionEvents.Reconnect reconnect) {
-                    events.add(reconnect);
+                    events.offer(reconnect);
                 }
             };
 
@@ -185,7 +185,7 @@ public class ConnectionFailureTest extends AbstractRedisClientTest {
 
             assertThat(connection.isOpen()).isFalse();
             connectionWatchdog.setReconnectSuspended(false);
-            connectionWatchdog.run(null);
+            connectionWatchdog.run(0);
             Thread.sleep(500);
             assertThat(connection.isOpen()).isFalse();
 
@@ -223,7 +223,6 @@ public class ConnectionFailureTest extends AbstractRedisClientTest {
     public void closingDisconnectedConnectionShouldDisableConnectionWatchdog() throws Exception {
 
         client.setOptions(ClientOptions.create());
-
 
         RedisURI redisUri = RedisURI.Builder.redis(TestSettings.host(), TestSettings.port())
                 .withTimeout(10, TimeUnit.MINUTES).build();
