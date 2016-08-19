@@ -44,12 +44,13 @@ public class ConnectionWatchdog extends ChannelInboundHandlerAdapter {
 
     private Channel channel;
     private SocketAddress remoteAddress;
-    private int attempts;
     private long lastReconnectionLogging = -1;
     private String logPrefix;
 
+    private volatile int attempts;
     private volatile boolean armed;
     private volatile boolean listenOnChannelInactive;
+    private volatile Timeout reconnectScheduleTimeout;
 
     /**
      * Create a new watchdog that adds to new connections to the supplied {@link ChannelGroup} and establishes a new
@@ -126,6 +127,7 @@ public class ConnectionWatchdog extends ChannelInboundHandlerAdapter {
     @Override
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
 
+        reconnectScheduleTimeout = null;
         channel = ctx.channel();
         remoteAddress = channel.remoteAddress();
         logPrefix = null;
@@ -165,7 +167,7 @@ public class ConnectionWatchdog extends ChannelInboundHandlerAdapter {
     /**
      * Schedule reconnect if channel is not available/not active.
      */
-    public void scheduleReconnect() {
+    public synchronized void scheduleReconnect() {
 
         logger.debug("{} scheduleReconnect()", logPrefix());
 
@@ -179,13 +181,13 @@ public class ConnectionWatchdog extends ChannelInboundHandlerAdapter {
             return;
         }
 
-        if (channel == null || !channel.isActive()) {
+        if ((channel == null || !channel.isActive()) && reconnectScheduleTimeout == null) {
             attempts++;
 
             final int attempt = attempts;
             int timeout = (int) reconnectDelay.getTimeUnit().toMillis(reconnectDelay.createDelay(attempt));
             logger.debug("{} Reconnect attempt {}, delay {}ms", logPrefix(), attempt, timeout);
-            timer.newTimeout(new TimerTask() {
+            this.reconnectScheduleTimeout = timer.newTimeout(new TimerTask() {
                 @Override
                 public void run(final Timeout timeout) throws Exception {
 
@@ -213,6 +215,8 @@ public class ConnectionWatchdog extends ChannelInboundHandlerAdapter {
      * @throws Exception when reconnection fails.
      */
     public void run(int attempt) throws Exception {
+
+        reconnectScheduleTimeout = null;
 
         if (!isEventLoopGroupActive()) {
             logger.debug("isEventLoopGroupActive() == false");

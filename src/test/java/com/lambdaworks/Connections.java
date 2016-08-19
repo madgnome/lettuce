@@ -1,5 +1,6 @@
 package com.lambdaworks;
 
+import com.lambdaworks.redis.protocol.DefaultEndpoint;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import com.lambdaworks.redis.RedisChannelHandler;
@@ -24,8 +25,9 @@ public class Connections {
 
     public static ConnectionWatchdog getConnectionWatchdog(StatefulConnection<?, ?> connection) {
 
-        Channel channel = getChannel(connection);
-        return channel.pipeline().get(ConnectionWatchdog.class);
+        RedisChannelHandler<?, ?> redisChannelHandler = (RedisChannelHandler<?, ?>) connection;
+        DefaultEndpoint endpoint = (DefaultEndpoint) redisChannelHandler.getChannelWriter();
+        return (ConnectionWatchdog) ReflectionTestUtils.getField(endpoint, "connectionWatchdog");
     }
 
     public static <K, V> StatefulRedisConnectionImpl<K, V> getStatefulConnection(RedisAsyncCommands<K, V> connection) {
